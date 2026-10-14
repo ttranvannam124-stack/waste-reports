@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Phản ánh rác thải</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          16px/1.6 system-ui,
+          sans-serif;
+        background: #f1f5f4;
+        color: #18352c;
+      }
+      header {
+        background: #145740;
+        color: white;
+        padding: 22px;
+      }
+      header div,
+      main {
+        max-width: 1000px;
+        margin: auto;
+      }
+      h1 {
+        margin: 0;
+        font-size: 26px;
+      }
+      h2 {
+        margin-top: 0;
+      }
+      main {
+        padding: 24px 16px;
+      }
+      .card {
+        background: white;
+        padding: 24px;
+        border: 1px solid #dce5e0;
+        border-radius: 14px;
+        margin-bottom: 18px;
+      }
+      #loginCard {
+        max-width: 440px;
+        margin: 30px auto;
+      }
+      label {
+        display: block;
+        margin: 12px 0;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 11px;
+        font: inherit;
+        border: 1px solid #bccdc4;
+        border-radius: 8px;
+        margin-top: 5px;
+      }
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+      button {
+        padding: 10px 16px;
+        background: #176c4c;
+        color: white;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+        font: inherit;
+      }
+      button:hover {
+        filter: brightness(0.92);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      .secondary {
+        background: #e4eee8;
+        color: #18352c;
+      }
+      .danger {
+        background: #b63939;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .stats {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 18px 0;
+      }
+      .stat {
+        flex: 1;
+        min-width: 130px;
+        background: #e9f4ec;
+        padding: 14px;
+        border-radius: 10px;
+      }
+      .stat strong {
+        display: block;
+        font-size: 26px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        padding: 13px 10px;
+        text-align: left;
+        border-bottom: 1px solid #e4eae6;
+      }
+      th {
+        background: #f5f8f6;
+      }
+      .badge {
+        padding: 4px 9px;
+        border-radius: 20px;
+        white-space: nowrap;
+        font-size: 14px;
+      }
+      .pending {
+        background: #fff0cb;
+        color: #785600;
+      }
+      .in_progress {
+        background: #e0edff;
+        color: #21549c;
+      }
+      .completed {
+        background: #d9f2df;
+        color: #216236;
+      }
+      .muted {
+        color: #60756a;
+      }
+      #notice {
+        white-space: pre-wrap;
+        margin-bottom: 16px;
+      }
+      #notice:empty {
+        display: none;
+      }
+      .error {
+        color: #ae2222;
+      }
+      .success {
+        color: #176c4c;
+      }
+      dialog {
+        border: 0;
+        border-radius: 14px;
+        padding: 24px;
+        width: min(600px, 94vw);
+        max-height: 90vh;
+        overflow: auto;
+      }
+      dialog::backdrop {
+        background: #10251d88;
+      }
+      #detailText {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Phản ánh rác thải</h1>
+        <span>Tiếp nhận · Phân công · Theo dõi xử lý</span>
+      </div>
+    </header>
+
+    <main>
+      <div id="notice" role="status"></div>
+
+      <section id="loginCard" class="card">
+        <h2>Đăng nhập</h2>
+        <form id="loginForm">
+          <label
+            >Tên đăng nhập
+            <input id="username" autocomplete="username" required />
+          </label>
+          <label
+            >Mật khẩu
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+          <button type="submit">Đăng nhập</button>
+        </form>
+      </section>
+
+      <section id="workspace" hidden>
+        <div class="card">
+          <div class="row">
+            <strong id="account"></strong>
+            <div class="actions">
+              <button id="newButton" hidden>Tạo phản ánh</button>
+              <button id="refreshButton" class="secondary">Tải lại</button>
+              <button id="logoutButton" class="secondary">Đăng xuất</button>
+            </div>
+          </div>
+
+          <div id="stats" class="stats"></div>
+
+          <label
+            >Lọc trạng thái
+            <select id="filter">
+              <option value="">Tất cả</option>
+              <option value="pending">Chờ tiếp nhận</option>
+              <option value="in_progress">Đang xử lý</option>
+              <option value="completed">Hoàn thành</option>
+            </select>
+          </label>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã</th>
+                  <th>Tiêu đề</th>
+                  <th>Địa điểm</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="reportRows"></tbody>
+            </table>
+          </div>
+          <p id="empty" class="muted" hidden>Chưa có phản ánh phù hợp.</p>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="editor">
+      <h2 id="editorTitle">Tạo phản ánh</h2>
+      <form id="reportForm">
+        <label
+          >Tiêu đề
+          <input id="titleInput" maxlength="200" required />
+        </label>
+        <label
+          >Địa điểm
+          <input id="locationInput" maxlength="1000" required />
+        </label>
+        <label
+          >Mô tả
+          <textarea id="descriptionInput" maxlength="5000" required></textarea>
+        </label>
+        <div class="actions">
+          <button type="submit">Lưu phản ánh</button>
+          <button
+            type="button"
+            class="secondary"
+            onclick="document.getElementById('editor').close()"
+          >
+            Hủy
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="detail">
+      <h2 id="detailTitle"></h2>
+      <div id="detailText"></div>
+
+      <form id="assignmentForm" hidden>
+        <label
+          >Nhân viên xử lý
+          <select id="workerSelect" required></select>
+        </label>
+        <button type="submit">Phân công</button>
+      </form>
+
+      <form id="completionForm" hidden>
+        <label
+          >Kết quả xử lý
+          <textarea id="resultInput" maxlength="5000" required></textarea>
+        </label>
+        <button type="submit">Xác nhận hoàn thành</button>
+      </form>
+
+      <p>
+        <button
+          class="secondary"
+          onclick="document.getElementById('detail').close()"
+        >
+          Đóng
+        </button>
+      </p>
+    </dialog>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const statuses = {
+        pending: "Chờ tiếp nhận",
+        in_progress: "Đang xử lý",
+        completed: "Hoàn thành",
+      };
+      const roles = {
+        citizen: "Người dân",
+        manager: "Quản lý",
+        worker: "Nhân viên vệ sinh",
+      };
+
+      let currentUser = null;
+      let reports = [];
+      let editingId = null;
+      let selectedId = null;
+
+      function notify(message, error = false) {
+        $("notice").textContent = message;
+        $("notice").className = error ? "error" : "success";
+      }
+
+      function showLogin() {
+        currentUser = null;
+        reports = [];
+        $("workspace").hidden = true;
+        $("loginCard").hidden = false;
+        $("editor").close();
+        $("detail").close();
+      }
+
+      async function api(path, method = "GET", body) {
+        const options = { method, credentials: "same-origin" };
+        if (body !== undefined) {
+          options.headers = { "Content-Type": "application/json" };
+          options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(path, options);
+        const data = await response.json().catch(() => ({
+          message: "Server trả về dữ liệu không hợp lệ.",
+        }));
+
+        if (!response.ok) {
+          if (response.status === 401) showLogin();
+          throw new Error(data.message || "Thao tác thất bại.");
+        }
+        return data;
+      }
+
+      async function run(action) {
+        try {
+          await action();
+        } catch (error) {
+          notify(error.message, true);
+          // Hiển thị lỗi ngay cả khi đang mở hộp thoại.
+          if ($("editor").open || $("detail").open) {
+            alert(error.message);
+          }
+        }
+      }
+
+      function addCell(row, text) {
+        const cell = document.createElement("td");
+        cell.textContent = text;
+        row.appendChild(cell);
+        return cell;
+      }
+
+      function actionButton(label, action, className = "") {
+        const button = document.createElement("button");
+        button.textContent = label;
+        button.className = className;
+        button.onclick = () => run(action);
+        return button;
+      }
+
+      function renderReports() {
+        $("stats").replaceChildren();
+
+        // Thống kê trên toàn bộ danh sách được phép xem.
+        for (const [status, label] of Object.entries(statuses)) {
+          const box = document.createElement("div");
+          box.className = "stat";
+          const number = document.createElement("strong");
+          number.textContent = reports.filter(
+            (r) => r.status === status,
+          ).length;
+          const caption = document.createElement("span");
+          caption.textContent = label;
+          box.append(number, caption);
+          $("stats").appendChild(box);
+        }
+
+        const visible = reports.filter(
+          (r) => !$("filter").value || r.status === $("filter").value,
+        );
+
+        $("reportRows").replaceChildren();
+        $("empty").hidden = visible.length > 0;
+
+        for (const report of visible) {
+          const row = document.createElement("tr");
+          addCell(row, report.id);
+          addCell(row, report.title);
+          addCell(row, report.location);
+
+          const statusCell = addCell(row, "");
+          const badge = document.createElement("span");
+          badge.className = "badge " + report.status;
+          badge.textContent = statuses[report.status];
+          statusCell.appendChild(badge);
+
+          const actions = addCell(row, "");
+          const buttons = document.createElement("div");
+          buttons.className = "actions";
+          buttons.appendChild(
+            actionButton("Chi tiết", () => openDetail(report.id), "secondary"),
+          );
+
+          if (currentUser.role === "manager" && report.status === "pending") {
+            buttons.appendChild(
+              actionButton("Sửa", () => openEditor(report), "secondary"),
+            );
+            buttons.appendChild(
+              actionButton(
+                "Xóa",
+                async () => {
+                  if (!confirm(`Xóa phản ánh #${report.id}?`)) return;
+                  const result = await api(
+                    `/api/reports/${report.id}`,
+                    "DELETE",
+                  );
+                  await loadReports();
+                  notify(result.message);
+                },
+                "danger",
+              ),
+            );
+          }
+
+          actions.appendChild(buttons);
+          $("reportRows").appendChild(row);
+        }
+      }
+
+      async function loadReports() {
+        const data = await api("/api/reports");
+        reports = data.reports;
+        renderReports();
+      }
+
+      async function enterWorkspace(user) {
+        currentUser = user;
+        $("loginCard").hidden = true;
+        $("workspace").hidden = false;
+        $("account").textContent = `${user.full_name} — ${roles[user.role]}`;
+        $("newButton").hidden = user.role !== "citizen";
+        $("filter").value = "";
+        await loadReports();
+      }
+
+      function openEditor(report = null) {
+        editingId = report ? report.id : null;
+        $("editorTitle").textContent = report ? "Sửa phản ánh" : "Tạo phản ánh";
+        $("titleInput").value = report ? report.title : "";
+        $("locationInput").value = report ? report.location : "";
+        $("descriptionInput").value = report ? report.description : "";
+        $("editor").showModal();
+      }
+
+      async function openDetail(id) {
+        const { report } = await api(`/api/reports/${id}`);
+        selectedId = id;
+        $("assignmentForm").hidden = true;
+        $("completionForm").hidden = true;
+
+        $("detailTitle").textContent = `#${id} — ${report.title}`;
+        $("detailText").textContent = [
+          `Địa điểm: ${report.location}`,
+          `Mô tả: ${report.description}`,
+          `Trạng thái: ${statuses[report.status]}`,
+          `Mã người gửi: ${report.citizen_id}`,
+          `Mã nhân viên: ${report.worker_id ?? "Chưa phân công"}`,
+          `Kết quả: ${report.result_note || "Chưa có"}`,
+          `Ngày tạo: ${new Date(report.created_at).toLocaleString("vi-VN")}`,
+        ].join("\n\n");
+
+        if (currentUser.role === "manager" && report.status === "pending") {
+          const { workers } = await api("/api/workers");
+          $("workerSelect").replaceChildren();
+          const placeholder = document.createElement("option");
+          placeholder.value = "";
+          placeholder.textContent = "Chọn nhân viên";
+          $("workerSelect").appendChild(placeholder);
+
+          for (const worker of workers) {
+            const option = document.createElement("option");
+            option.value = worker.id;
+            option.textContent = worker.full_name;
+            $("workerSelect").appendChild(option);
+          }
+          $("assignmentForm").hidden = false;
+        }
+
+        if (currentUser.role === "worker" && report.status === "in_progress") {
+          $("resultInput").value = "";
+          $("completionForm").hidden = false;
+        }
+
+        $("detail").showModal();
+      }
+
+      // Chặn bấm gửi lặp trong lúc đang chờ API.
+      function bindForm(id, action) {
+        $(id).addEventListener("submit", (event) => {
+          event.preventDefault();
+          const button = event.submitter || $(id).querySelector("button");
+          if (button.disabled) return;
+          button.disabled = true;
+          run(action).finally(() => {
+            button.disabled = false;
+          });
+        });
+      }
+
+      bindForm("loginForm", async () => {
+        const data = await api("/api/login", "POST", {
+          username: $("username").value,
+          password: $("password").value,
+        });
+        $("password").value = "";
+        await enterWorkspace(data.user);
+        notify(data.message);
+      });
+
+      bindForm("reportForm", async () => {
+        const body = {
+          title: $("titleInput").value,
+          location: $("locationInput").value,
+          description: $("descriptionInput").value,
+        };
+
+        const path =
+          editingId === null ? "/api/reports" : `/api/reports/${editingId}`;
+        const method = editingId === null ? "POST" : "PATCH";
+        const data = await api(path, method, body);
+        $("editor").close();
+        await loadReports();
+        notify(data.message);
+      });
+
+      bindForm("assignmentForm", async () => {
+        const data = await api(
+          `/api/reports/${selectedId}/assignment`,
+          "PATCH",
+          { worker_id: Number($("workerSelect").value) },
+        );
+        $("detail").close();
+        await loadReports();
+        notify(data.message);
+      });
+
+      bindForm("completionForm", async () => {
+        const data = await api(
+          `/api/reports/${selectedId}/completion`,
+          "PATCH",
+          { result_note: $("resultInput").value },
+        );
+        $("detail").close();
+        await loadReports();
+        notify(data.message);
+      });
+
+      $("newButton").onclick = () => openEditor();
+      $("filter").onchange = renderReports;
+      $("refreshButton").onclick = () => run(loadReports);
+      $("logoutButton").onclick = () =>
+        run(async () => {
+          const data = await api("/api/logout", "POST", {});
+          showLogin();
+          notify(data.message);
+        });
+
+      (async () => {
+        try {
+          const response = await fetch("/api/me");
+          if (response.status === 401) return;
+          if (!response.ok) throw new Error("Không tải được phiên đăng nhập.");
+          const data = await response.json();
+          await enterWorkspace(data.user);
+        } catch (error) {
+          notify(error.message, true);
+        }
+      })();
+    </script>
+  </body>
+</html>
